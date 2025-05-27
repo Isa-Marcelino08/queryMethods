@@ -1,0 +1,314 @@
+// Aluno.java
+package com.example.thafany.entities;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name="tb_aluno")
+public class Aluno {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long id;
+
+    private String nome;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "curso_id")
+    private Curso curso;
+
+    public Aluno() {}
+
+    public Aluno(Long id, String nome, Curso curso) {
+        this.id = id;
+        this.nome = nome;
+        this.curso = curso;
+    }
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getNome() { return nome; }
+    public void setNome(String nome) { this.nome = nome; }
+
+    public Curso getCurso() { return curso; }
+    public void setCurso(Curso curso) { this.curso = curso; }
+}
+
+// Curso.java
+package com.example.thafany.entities;
+
+import java.util.List;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name="tb_curso")
+public class Curso {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long id;
+
+    private String nameCurso;
+
+    @OneToMany(mappedBy = "curso", fetch = FetchType.LAZY)
+    private List<Aluno> alunos;
+
+    public Curso() {}
+
+    public Curso(Long id, String nameCurso, List<Aluno> alunos) {
+        this.id = id;
+        this.nameCurso = nameCurso;
+        this.alunos = alunos;
+    }
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getNameCurso() { return nameCurso; }
+    public void setNameCurso(String nameCurso) { this.nameCurso = nameCurso; }
+
+    public List<Aluno> getAlunos() { return alunos; }
+    public void setAlunos(List<Aluno> alunos) { this.alunos = alunos; }
+}
+
+// AlunoRepository.java
+package com.example.thafany.repositories;
+
+import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import com.example.thafany.entities.Aluno;
+
+public interface AlunoRepository extends JpaRepository<Aluno, Long> {
+
+    @Query("SELECT a FROM Aluno a WHERE a.curso.nameCurso = :nomeCurso")
+    List<Aluno> findAlunoByCurso(@Param("nomeCurso") String nomeCurso);
+
+    @Query("SELECT a FROM Aluno a WHERE LOWER(a.nome) LIKE LOWER(CONCAT('%', :nome, '%'))")
+    List<Aluno> findByNomeContendo(@Param("nome") String nome);
+
+    @Query("SELECT a FROM Aluno a GROUP BY a.curso HAVING COUNT(a) > 1")
+    List<Aluno> findAlunosComMaisDeUmCurso();
+}
+
+// CursoRepository.java
+package com.example.thafany.repositories;
+
+import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import com.example.thafany.entities.Curso;
+
+public interface CursoRepository extends JpaRepository<Curso, Long> {
+
+    @Query("SELECT c FROM Curso c JOIN c.alunos a WHERE a.nome = :nomeAluno")
+    List<Curso> findCursoByAluno(@Param("nomeAluno") String nomeAluno);
+}
+
+// AlunoService.java
+package com.example.thafany.services;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+
+import com.example.thafany.entities.Aluno;
+import com.example.thafany.repositories.AlunoRepository;
+
+@Service
+public class AlunoService {
+
+    private final AlunoRepository alunoRepository;
+
+    public AlunoService(AlunoRepository alunoRepository) {
+        this.alunoRepository = alunoRepository;
+    }
+
+    public Aluno findAlunoById(Long id) {
+        return alunoRepository.findById(id).orElse(null);
+    }
+
+    public Aluno insertAluno(Aluno aluno) {
+        return alunoRepository.save(aluno);
+    }
+
+    public List<Aluno> findAllAlunos() {
+        return alunoRepository.findAll();
+    }
+
+    public List<Aluno> BuscaAlunoPorCurso(String nomeCurso) {
+        return alunoRepository.findAlunoByCurso(nomeCurso);
+    }
+
+    public List<Aluno> BuscarPorNomeContendo(String nome) {
+        return alunoRepository.findByNomeContendo(nome);
+    }
+
+    public List<Aluno> BuscarAlunoComMaisDeUmCurso() {
+        return alunoRepository.findAlunosComMaisDeUmCurso();
+    }
+}
+
+// CursoService.java
+package com.example.thafany.services;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+
+import com.example.thafany.entities.Curso;
+import com.example.thafany.repositories.CursoRepository;
+
+@Service
+public class CursoService {
+
+    private final CursoRepository cursoRepository;
+
+    public CursoService(CursoRepository cursoRepository) {
+        this.cursoRepository = cursoRepository;
+    }
+
+    public Curso findCursoById(Long id) {
+        return cursoRepository.findById(id).orElse(null);
+    }
+
+    public Curso insertCurso(Curso curso) {
+        return cursoRepository.save(curso);
+    }
+
+    public List<Curso> findAllCursos() {
+        return cursoRepository.findAll();
+    }
+
+    public List<Curso> BuscarCursoPorAluno(String nomeAluno) {
+        return cursoRepository.findCursoByAluno(nomeAluno);
+    }
+}
+
+// AlunoController.java
+package com.example.thafany.controller;
+
+import java.util.List;
+
+import org.springframework.web.bind.annotation.*;
+
+import com.example.thafany.entities.Aluno;
+import com.example.thafany.services.AlunoService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+@Tag(name = "Alunos", description = "API de Cadastro de Alunos")
+@RestController
+@RequestMapping("/alunos")
+public class AlunoController {
+
+    private final AlunoService alunoService;
+
+    public AlunoController(AlunoService alunoService) {
+        this.alunoService = alunoService;
+    }
+
+    @PostMapping("/salvar")
+    @Operation(summary = "Operação para salvar aluno")
+    public Aluno createAluno(@RequestBody Aluno aluno) {
+        return alunoService.insertAluno(aluno);
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Operação para buscar aluno por id")
+    public Aluno getAlunoById(@PathVariable Long id) {
+        return alunoService.findAlunoById(id);
+    }
+
+    @GetMapping("/listar")
+    @Operation(summary = "Operação listar todos os alunos")
+    public List<Aluno> getAllAlunos() {
+        return alunoService.findAllAlunos();
+    }
+
+    @GetMapping("/alunos-curso")
+    @Operation(summary = "Operação para listar aluno por curso")
+    public List<Aluno> listarAlunoPorCurso(@RequestParam String nome) {
+        return alunoService.BuscaAlunoPorCurso(nome);
+    }
+
+    @GetMapping("/nome")
+    @Operation(summary = "Operação listar aluno por nome contendo...")
+    public List<Aluno> buscaPorNome(@RequestParam String nome) {
+        return alunoService.BuscarPorNomeContendo(nome);
+    }
+
+    @GetMapping("/multi-cursos")
+    @Operation(summary = "Operação para listar alunos com mais de um Curso")
+    public List<Aluno> buscaAlunoComMaisCurso() {
+        return alunoService.BuscarAlunoComMaisDeUmCurso();
+    }
+}
+
+// CursoController.java
+package com.example.thafany.controller;
+
+import java.util.List;
+
+import org.springframework.web.bind.annotation.*;
+
+import com.example.thafany.entities.Curso;
+import com.example.thafany.services.CursoService;
+
+import io.swagger.v3.oas.annotations.Operation;
+
+@RestController
+@RequestMapping("/cursos")
+public class CursoController {
+
+    private final CursoService cursoService;
+
+    public CursoController(CursoService cursoService) {
+        this.cursoService = cursoService;
+    }
+
+    @PostMapping("/salvar")
+    @Operation(summary = "Operação listar todos os cursos")
+    public Curso createCurso(@RequestBody Curso curso) {
+        return cursoService.insertCurso(curso);
+    }
+
+    @GetMapping("/{id}")
+    public Curso getCursoById(@PathVariable Long id) {
+        return cursoService.findCursoById(id);
+    }
+
+    @GetMapping("/listar")
+    public List<Curso> getAllCursos() {
+        return cursoService.findAllCursos();
+    }
+
+    @GetMapping("/curso-aluno")
+    public List<Curso> getCursoPorAluno(@RequestParam String nomeAluno) {
+        return cursoService.BuscarCursoPorAluno(nomeAluno);
+    }
+}
